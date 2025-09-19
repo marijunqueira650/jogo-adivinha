@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Jogo: Adivinhe o Número</title>
+  <style>
+    :root{--bg:#0f172a;--card:#0b1220;--accent:#10b981;--muted:#94a3b8;--glass:rgba(255,255,255,0.04)}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#071024 0%, #0b1220 100%);color:#e6eef8}
+    .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:28px}
+    .card{width:100%;max-width:720px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:16px;padding:28px;box-shadow:0 8px 30px rgba(2,6,23,0.7);}
+    h1{margin:0 0 6px;font-size:22px}
+    p.lead{margin:0 0 18px;color:var(--muted)}
+    .row{display:flex;gap:12px;align-items:center}
+    .col{flex:1}
+    input[type=number]{width:100%;padding:12px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:var(--glass);color:inherit;font-size:16px}
+    button{padding:10px 14px;border-radius:10px;border:0;background:var(--accent);color:#042018;font-weight:600;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+    .status{margin-top:16px;padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);color:var(--muted)}
+    .hint{font-weight:700;margin-top:8px}
+    .win{color:#34d399;font-weight:800}
+    .small{font-size:13px;color:var(--muted)}
+    footer{margin-top:18px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+    .controls{display:flex;gap:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="card" role="main">
+      <h1>Jogo: Adivinhe o Número</h1>
+      <p class="lead">A CPU gerou um número entre <strong>1</strong> e <strong>100</strong>. Tente acertar.<br>Digite um número e pressione <strong>Enviar</strong> (ou Enter).</p>
+
+      <div class="row">
+        <input id="guessInput" type="number" min="1" max="100" placeholder="Seu palpite (1-100)" aria-label="Seu palpite" />
+        <button id="submitBtn">Enviar</button>
+        <button id="clearBtn" class="ghost">Limpar</button>
+      </div>
+
+      <div class="status" id="status">
+        <div class="small">Tentativa: <span id="attempts">0</span></div>
+        <div id="message" class="hint">Boa sorte!</div>
+      </div>
+
+      <footer>
+        <div class="controls">
+          <button id="newGameBtn" class="ghost">Novo jogo</button>
+          <button id="revealBtn" class="ghost">Revelar número</button>
+        </div>
+        <div class="small">Quer jogar várias partidas? Depois de acertar, clique em <strong>Jogar novamente</strong> ou <strong>Novo jogo</strong>.</div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // Estado do jogo
+    let cpu = null;
+    let attempts = 0;
+    let playing = false;
+
+    const guessInput = document.getElementById('guessInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const newGameBtn = document.getElementById('newGameBtn');
+    const revealBtn = document.getElementById('revealBtn');
+    const attemptsEl = document.getElementById('attempts');
+    const messageEl = document.getElementById('message');
+    const statusEl = document.getElementById('status');
+
+    function rand100(){
+      return Math.floor(Math.random()*100) + 1;
+    }
+
+    function startGame(){
+      cpu = rand100();
+      attempts = 0;
+      playing = true;
+      attemptsEl.textContent = attempts;
+      messageEl.textContent = 'Jogo iniciado — faça seu palpite!';
+      messageEl.className = 'hint';
+      guessInput.value = '';
+      guessInput.focus();
+      console.log('[DEBUG] Número gerado pela CPU:', cpu);
+    }
+
+    function endGame(win){
+      playing = false;
+      if(win){
+        messageEl.innerHTML = `<span class="win">ACERTOU o número em ${attempts} tentativas!!!</span>`;
+      } else {
+        messageEl.textContent = `Jogo finalizado. O número era ${cpu}.`;
+      }
+    }
+
+    function validate(value){
+      if(value === '' || value === null) return {ok:false, reason:'vazio'};
+      const n = Number(value);
+      if(!Number.isInteger(n)) return {ok:false, reason:'inteiro'};
+      if(n < 1 || n > 100) return {ok:false, reason:'intervalo'};
+      return {ok:true, value:n};
+    }
+
+    function submitGuess(){
+      if(!playing){
+        messageEl.textContent = 'Jogo não iniciado. Clique em Novo jogo para começar.';
+        return;
+      }
+      const raw = guessInput.value;
+      const v = validate(raw);
+      if(!v.ok){
+        if(v.reason === 'vazio') messageEl.textContent = 'Entrada inválida!! Digite um número de 1 a 100.';
+        else if(v.reason === 'inteiro') messageEl.textContent = 'Entrada inválida!! Digite um número inteiro.';
+        else messageEl.textContent = 'Entrada inválida!! Número fora do intervalo 1-100.';
+        guessInput.focus();
+        return;
+      }
+      const jog = v.value;
+      attempts += 1;
+      attemptsEl.textContent = attempts;
+
+      if(cpu < jog){
+        messageEl.textContent = 'O valor é MENOR...';
+      } else if(cpu > jog){
+        messageEl.textContent = 'O valor é MAIOR...';
+      } else {
+        endGame(true);
+        // mostrar botão para continuar jogando automaticamente
+        setTimeout(()=>{
+          if(confirm('Jogar novamente (sim = OK / não = Cancelar)?')){
+            startGame();
+          } else {
+            messageEl.textContent = messageEl.textContent + ' Obrigado por jogar!';
+          }
+        }, 10);
+      }
+      guessInput.select();
+    }
+
+    // eventos
+    submitBtn.addEventListener('click', submitGuess);
+    clearBtn.addEventListener('click', ()=>{ guessInput.value=''; guessInput.focus(); });
+    newGameBtn.addEventListener('click', startGame);
+    revealBtn.addEventListener('click', ()=>{ if(playing) alert('Número gerado: ' + cpu); else alert('Nenhum jogo ativo.'); });
+
+    // permitir Enter para enviar
+    guessInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') submitGuess(); });
+
+    // iniciar automaticamente quando abrir a página
+    startGame();
+  </script>
+</body>
+</html>
